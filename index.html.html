@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StudyScore AI - Quản lý kết quả học tập</title>
+<style>
+body{font-family:Arial,sans-serif;background:#f4f7fb;margin:0;color:#172033}
+.wrap{max-width:1000px;margin:30px auto;padding:20px}
+h1{margin-bottom:6px}.sub{color:#667085}
+.card{background:white;border-radius:16px;padding:20px;margin:16px 0;box-shadow:0 4px 18px #0000000b}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+input,button{padding:11px;border:1px solid #d0d5dd;border-radius:9px;font-size:15px;box-sizing:border-box;width:100%}
+button{background:#2563eb;color:white;border:0;cursor:pointer;font-weight:600}
+button.secondary{background:#eef2ff;color:#1d4ed8}
+table{width:100%;border-collapse:collapse;margin-top:15px}
+th,td{padding:10px;border-bottom:1px solid #eee;text-align:left}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.stat{background:#f8fafc;padding:15px;border-radius:12px}.num{font-size:26px;font-weight:700}
+@media(max-width:700px){.grid,.stats{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>StudyScore AI</h1>
+<div class="sub">Quản lý, tính điểm và phân tích kết quả học tập</div>
+
+<div class="card">
+<h2>Thông tin sinh viên</h2>
+<div class="grid">
+<input id="name" placeholder="Tên sinh viên">
+<input id="id" placeholder="Mã sinh viên">
+<input id="semester" placeholder="Học kỳ">
+<button type="button" onclick="showAddForm()">+ Thêm môn học</button>
+</div>
+<div id="addForm" style="display:none;margin-top:15px;padding:15px;background:#f8fafc;border-radius:12px">
+<h3 style="margin-top:0">Thêm môn học</h3>
+<div class="grid">
+<input id="subjectName" placeholder="Tên môn học">
+<input id="subjectCredit" type="number" min="1" max="20" value="3" placeholder="Số tín chỉ">
+<input id="subjectScore" type="number" min="0" max="10" step="0.1" placeholder="Điểm hệ 10">
+<button type="button" onclick="saveSubject()">Lưu môn học</button>
+</div>
+</div>
+<table>
+<thead><tr><th>Môn học</th><th>Tín chỉ</th><th>Điểm hệ 10</th><th>Thao tác</th></tr></thead>
+<tbody id="rows"></tbody>
+</table>
+<br><button type="button" onclick="calculate()">Tính kết quả</button>
+</div>
+
+<div class="card" id="result" style="display:none">
+<h2>Kết quả</h2>
+<div class="stats">
+<div class="stat">GPA hệ 4<div class="num" id="gpa">-</div></div>
+<div class="stat">Điểm TB hệ 10<div class="num" id="avg">-</div></div>
+<div class="stat">Xếp loại<div class="num" id="rank">-</div></div>
+</div>
+<h3>Phân tích học tập</h3>
+<p id="analysis"></p>
+</div>
+</div>
+<script>
+function showAddForm(){
+  const f=document.getElementById('addForm');
+  f.style.display=f.style.display==='none'?'block':'none';
+  if(f.style.display==='block') document.getElementById('subjectName').focus();
+}
+
+function saveSubject(){
+  const name=document.getElementById('subjectName').value.trim();
+  const credit=Number(document.getElementById('subjectCredit').value);
+  const score=Number(document.getElementById('subjectScore').value);
+
+  if(!name){alert('Vui lòng nhập tên môn học.');return}
+  if(!Number.isFinite(credit)||credit<1){alert('Số tín chỉ phải từ 1 trở lên.');return}
+  if(!Number.isFinite(score)||score<0||score>10){alert('Điểm phải từ 0 đến 10.');return}
+
+  const tr=document.createElement('tr');
+  tr.innerHTML='<td>'+escapeHtml(name)+'</td><td>'+credit+'</td><td>'+score.toFixed(1)+'</td><td><button type="button" class="secondary" onclick="this.closest(\'tr\').remove()">Xóa</button></td>';
+  document.getElementById('rows').appendChild(tr);
+
+  document.getElementById('subjectName').value='';
+  document.getElementById('subjectCredit').value='3';
+  document.getElementById('subjectScore').value='';
+  document.getElementById('subjectName').focus();
+}
+
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+function g4(x){
+  if(x>=8.5)return 4;
+  if(x>=8)return 3.5;
+  if(x>=7)return 3;
+  if(x>=6.5)return 2.5;
+  if(x>=5.5)return 2;
+  if(x>=5)return 1.5;
+  return 0
+}
+
+function calculate(){
+  let rows=[...document.querySelectorAll('#rows tr')], total=0, credits=0, sum10=0, low=[], best=[];
+  rows.forEach(r=>{
+    let n=r.children[0].textContent;
+    let c=+r.children[1].textContent;
+    let x=+r.children[2].textContent;
+    total+=g4(x)*c;
+    credits+=c;
+    sum10+=x*c;
+    if(x<5)low.push(n);
+    if(x>=8)best.push(n);
+  });
+  if(!credits){alert('Hãy thêm ít nhất một môn học trước khi tính kết quả.');return}
+  let gpa=total/credits, avg=sum10/credits;
+  let rank=gpa>=3.6?'Xuất sắc':gpa>=3.2?'Giỏi':gpa>=2.5?'Khá':gpa>=2?'Trung bình':'Yếu';
+  document.getElementById('result').style.display='block';
+  document.getElementById('gpa').textContent=gpa.toFixed(2);
+  document.getElementById('avg').textContent=avg.toFixed(2);
+  document.getElementById('rank').textContent=rank;
+  let s='Kết quả cho thấy ';
+  if(best.length)s+='các môn nổi bật gồm '+best.join(', ')+'. ';
+  if(low.length)s+='Cần ưu tiên cải thiện: '+low.join(', ')+'.';
+  else s+='chưa có môn dưới 5 điểm; nên tiếp tục duy trì các môn có kết quả tốt.';
+  document.getElementById('analysis').textContent=s+' Phần phân tích này có thể được dùng làm nội dung demo cho việc ứng dụng ChatGPT trong hỗ trợ học tập.';
+}
+</script>
+</body>
+</html>
